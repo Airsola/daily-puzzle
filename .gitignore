@@ -1,3 +1,6 @@
 .DS_Store
 Data/
 node_modules/
+# 全部解法原文太大（约 144MB），仓库里只保留压缩包 solutions.tar.xz
+solver-data/solutions/*.txt
+solver-data/solutions/*.tmp

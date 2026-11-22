@@ -44,6 +44,8 @@
   let dateStr = '', targets = [], targetSet = new Set();
   let selected = null, drag = null;
   let elapsed = 0, startedAt = null, won = false, usedAnswer = false, bestTime = null;
+  let found = [];            // 当天玩家独立拼出的不同解法（解法指纹）
+  let shownAnswers = new Set(); // 本次打开页面后「答案 / 换一种」展示过的解法，尽量不重复
 
   // ---------- 布局 ----------
   function computeLayout() {
@@ -263,6 +265,16 @@
     };
     try { localStorage.setItem(STORE + dateStr, JSON.stringify(data)); } catch (_) { /* 隐私模式等 */ }
   }
+  // 解法指纹：每块零件实际覆盖的格子（零件各不相同，所以可唯一标识一种摆法）
+  function solutionKey() {
+    return pieces.map((p) => cellsOf(p).map(([r, c]) => key(r + p.pos.row, c + p.pos.col)).sort().join(' ')).join('|');
+  }
+  function loadFound() {
+    try { found = JSON.parse(localStorage.getItem(STORE + 'found:' + dateStr)) || []; } catch (_) { found = []; }
+  }
+  function saveFound() {
+    try { localStorage.setItem(STORE + 'found:' + dateStr, JSON.stringify(found)); } catch (_) { /* 忽略 */ }
+  }
   function load() {
     let data = null;
     try { data = JSON.parse(localStorage.getItem(STORE + dateStr)); } catch (_) { data = null; }
@@ -292,9 +304,21 @@
           won = true;
           stopTimer();
           const t = elapsedNow();
-          if (!usedAnswer && (!bestTime || t < bestTime)) bestTime = t;
-          showModal(usedAnswer ? '答案' : '完成！',
-            usedAnswer ? `这是 ${goalText()} 的一种解法。` : `${goalText()}，用时 ${fmt(t)}。坚持就是胜利！`);
+          if (usedAnswer) {
+            shownAnswers.add(solutionKey());
+            showModal('答案', `这是 ${goalText()} 的一种解法。点「换一种」看看别的摆法。`);
+          } else {
+            if (!bestTime || t < bestTime) bestTime = t;
+            const k = solutionKey();
+            const isNew = !found.includes(k);
+            if (isNew) { found.push(k); saveFound(); }
+            const tail = isNew
+              ? (found.length > 1 ? `这是你今天找到的第 ${found.length} 种解法！` : '坚持就是胜利！')
+              : '这种摆法你之前已经找到过了。';
+            showModal('完成！', `${goalText()}，用时 ${fmt(t)}。${tail}`, {
+              okText: '再找一种', cancelText: '好的', onOk: reset, banner: true,
+            });
+          }
         }
       } else {
         toast(`露出的是 ${open.map((x) => x[2]).join(' ')}，还不是目标日期`);
@@ -308,9 +332,14 @@
     svg.classList.toggle('won', won);
     const open = new Set(revealedCells().map(([r, c]) => key(r, c)));
     boardLayer.querySelectorAll('.cell').forEach((r) => r.classList.toggle('revealed', won && open.has(r.dataset.k)));
-    $('done').hidden = !(won && !usedAnswer) && !bestTime;
-    $('done').textContent = bestTime ? `已完成 · 最佳 ${fmt(bestTime)}` : '已完成';
-    ['rotate', 'flip', 'hint', 'answer'].forEach((id) => ($(id).disabled = won));
+    $('done').hidden = !found.length && !bestTime;
+    $('done').textContent = (found.length > 1 ? `已发现 ${found.length} 种解法` : '已完成') +
+      (bestTime ? ` · 最佳 ${fmt(bestTime)}` : '');
+    ['rotate', 'flip', 'hint'].forEach((id) => ($(id).disabled = won));
+    // 看过答案后，「答案」按钮变成「换一种」，可以连续翻看不同解法
+    const another = won && usedAnswer;
+    $('answer').textContent = another ? '换一种' : '答案';
+    $('answer').disabled = won && !usedAnswer;
   }
 
   // ---------- 提示 / 答案 ----------
@@ -349,6 +378,7 @@
   }
   // 答案 = 把剩下的提示一次性全部应用：优先保留已摆好的零件，无解时才整盘重排
   function answer() {
+    if (won && usedAnswer) return anotherAnswer();
     if (won) return;
     showModal('显示答案？', '会把剩下的零件全部摆好，本局不计入成绩。', {
       okText: '显示答案',
@@ -365,6 +395,24 @@
     usedAnswer = true;
     pieces.forEach((p) => applyPlacement(p.i, sol[p.i]));
     if (!kept && Object.keys(fixed).length) toast('当前摆法无解，已整盘重新摆放');
+    afterChange();
+  }
+  /** 换一种：整盘随机求解，尽量挑一个本次还没展示过的解法 */
+  function anotherAnswer() {
+    let sol = null, k = '';
+    for (let tries = 0; tries < 30; tries++) {
+      const s2 = C.solve(targets, {}, { shuffle: true });
+      if (!s2) break;
+      k = C.PIECES.map((_, i) => C.orient(C.PIECES[i].cells, s2[i].o)
+        .map(([r, c]) => key(r + s2[i].row, c + s2[i].col)).sort().join(' ')).join('|');
+      sol = s2;
+      if (!shownAnswers.has(k)) break;
+    }
+    if (!sol) { toast('没有找到解法'); return; }
+    shownAnswers.add(k);
+    $('modal').hidden = true;
+    pieces.forEach((p) => applyPlacement(p.i, sol[p.i]));
+    toast(`已展示 ${shownAnswers.size} 种不同解法`);
     afterChange();
   }
   function reset() {
@@ -393,7 +441,7 @@
     $('modal-cancel').hidden = !opts.onOk;
     modalOk = opts.onOk || null;
     // 纯提示（如完成）用底部横幅、不遮盖棋盘；确认框仍居中带遮罩
-    $('modal').classList.toggle('banner', !opts.onOk);
+    $('modal').classList.toggle('banner', opts.banner != null ? opts.banner : !opts.onOk);
     $('modal').hidden = false;
   }
   $('modal-close').onclick = () => {
@@ -419,6 +467,8 @@
     targetSet = new Set(targets.map(([r, c]) => key(r, c)));
     $('goal').textContent = goalText();
     load();
+    loadFound();
+    shownAnswers = new Set();
     drawBoard();
     pieces.forEach((p) => { drawPiece(p); place(p, false); });
     select(null);

@@ -72,9 +72,16 @@ button:disabled { opacity: .45; cursor: default; }
   background: rgba(0,0,0,.4);
 }
 #modal[hidden] { display: none; }
-#modal.banner { inset: auto 0 16px 0; background: none; pointer-events: none; }
-#modal.banner .card { pointer-events: auto; box-shadow: 0 6px 24px rgba(0,0,0,.25); padding: 12px 20px; }
-#modal.banner .row { margin-top: 10px; }
+#modal.banner { inset: 58px 0 auto 0; background: none; pointer-events: none; }
+#modal.banner .card {
+  pointer-events: auto; box-shadow: 0 6px 24px rgba(0,0,0,.25);
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;
+  padding: 8px 14px; border-radius: 12px; font-size: 14px;
+}
+#modal.banner h2 { margin: 0; font-size: 16px; }
+#modal.banner p { margin: 0; }
+#modal.banner .row { margin-top: 0; }
+#modal.banner button { padding: 5px 14px; }
 #modal .card {
   min-width: 260px; max-width: 86vw; padding: 22px 24px;
   border-radius: 16px; background: #f4efe6; color: #3e2c1c; text-align: center;
@@ -84,3 +91,7 @@ button:disabled { opacity: .45; cursor: default; }
 #modal button { background: #3e5c66; color: #fff; padding: 8px 24px; margin: 0 4px; }
 #modal button.secondary { background: #d9d2c5; color: #3e2c1c; }
 #modal button[hidden] { display: none; }
+/* 竖屏：托盘在棋盘下方，完成后那块是空的，横幅放到工具栏上方，避免盖住格子 */
+@media (max-aspect-ratio: 1/1) {
+  #modal.banner { inset: auto 0 calc(var(--banner-bottom, 160px) + env(safe-area-inset-bottom)) 0; }
+}

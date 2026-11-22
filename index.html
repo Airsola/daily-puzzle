@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <title>每日拼图</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="goal">目标：<b id="goal"></b><span id="done" class="badge" hidden>已完成</span></div>
+    <div class="meta">
+      <input type="date" id="date" aria-label="选择日期">
+      <button id="today" type="button">今天</button>
+      <span id="timer" aria-label="用时">00:00</span>
+    </div>
+  </header>
+
+  <main id="stage">
+    <svg id="game" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="每日拼图棋盘">
+      <g id="board"></g>
+      <g id="ghost"></g>
+      <g id="pieces"></g>
+    </svg>
+  </main>
+
+  <footer class="bar tools">
+    <button id="rotate" type="button">↻ 旋转</button>
+    <button id="flip" type="button">⇋ 翻转</button>
+    <button id="hint" type="button">💡 提示</button>
+    <button id="reset" type="button">重置</button>
+    <button id="answer" type="button">答案</button>
+  </footer>
+  <p class="help">把零件拖到棋盘上，盖住其他格子，只露出目标的月、日、星期。点一下零件旋转，右键或「翻转」镜像；键盘 R 旋转、F 翻转。</p>
+
+  <div id="toast" role="status"></div>
+
+  <div id="modal" hidden>
+    <div class="card">
+      <h2 id="modal-title">完成！</h2>
+      <p id="modal-text"></p>
+      <div class="row">
+        <button id="modal-cancel" type="button" class="secondary" hidden>取消</button>
+        <button id="modal-close" type="button">好的</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/core.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

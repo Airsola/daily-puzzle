@@ -1,0 +1,86 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  display: flex; flex-direction: column;
+  height: 100dvh;
+  background: radial-gradient(circle at 30% 20%, #6f8f99, #3e5c66);
+  color: #f4efe6;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.bar {
+  display: flex; flex-wrap: wrap; gap: 8px 16px;
+  align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+}
+.goal { font-size: 17px; }
+.goal b { color: #ffd98a; letter-spacing: 1px; }
+.badge {
+  margin-left: 8px; padding: 2px 8px; border-radius: 10px;
+  background: #81b29a; color: #fff; font-size: 12px;
+}
+.meta { display: flex; gap: 8px; align-items: center; }
+#timer { font-variant-numeric: tabular-nums; min-width: 48px; text-align: right; }
+button, input[type=date] {
+  font: inherit; font-size: 14px;
+  border: 0; border-radius: 8px;
+  padding: 7px 12px;
+  background: #f4efe6; color: #3e2c1c;
+  cursor: pointer;
+}
+button:active { transform: translateY(1px); }
+button:disabled { opacity: .45; cursor: default; }
+.tools { justify-content: center; }
+.help { margin: 0 14px 10px; font-size: 12px; opacity: .75; text-align: center; }
+
+#stage { flex: 1; min-height: 0; padding: 0 8px; }
+#game { width: 100%; height: 100%; display: block; touch-action: none; }
+
+/* 棋盘 */
+.frame { fill: #ead9bf; stroke: #b8936a; stroke-width: 4; stroke-linejoin: round; }
+.cell { fill: #d9bd92; stroke: #b8936a; stroke-width: 2; filter: url(#inset); }
+.well { fill: none; stroke: #7a5634; stroke-width: 5; stroke-linecap: round; }
+.label { fill: #6b4a2b; font-size: 28px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.label.small { font-size: 23px; }
+.label.target { fill: #c0392b; font-weight: 700; }
+.title { fill: #4a3220; font-size: 40px; font-weight: 700; text-anchor: middle; }
+.motto { fill: #6b4a2b; font-size: 46px; text-anchor: middle; letter-spacing: 10px; }
+.cell { transition: fill .3s; }
+/* 完成后：露出的格子保持棋盘本色，只让刻字发光，像实物一样从镂空处透出来 */
+.won .label.target { animation: glow 1.4s ease-in-out infinite alternate; }
+@keyframes glow { from { fill: #c0392b; } to { fill: #e8553f; } }
+
+/* 零件 */
+.piece { cursor: grab; filter: drop-shadow(2px 4px 3px rgba(60,35,15,.45)); }
+.piece .edge { fill: none; stroke: rgba(0,0,0,.45); stroke-width: 4; stroke-linecap: round; }
+.piece.selected .edge { stroke: #fff; stroke-width: 7; }
+.piece.anim { transition: transform .22s ease; }
+.piece.dragging { cursor: grabbing; filter: drop-shadow(8px 14px 10px rgba(0,0,0,.4)); }
+.ghost { fill: rgba(255,255,255,.45); stroke: #fff; stroke-width: 3; stroke-dasharray: 8 6; pointer-events: none; }
+
+#toast {
+  position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
+  max-width: 90vw; padding: 9px 16px; border-radius: 20px;
+  background: rgba(30,30,30,.85); color: #fff; font-size: 14px;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+#toast.show { opacity: 1; }
+
+#modal {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  background: rgba(0,0,0,.4);
+}
+#modal[hidden] { display: none; }
+#modal.banner { inset: auto 0 16px 0; background: none; pointer-events: none; }
+#modal.banner .card { pointer-events: auto; box-shadow: 0 6px 24px rgba(0,0,0,.25); padding: 12px 20px; }
+#modal.banner .row { margin-top: 10px; }
+#modal .card {
+  min-width: 260px; max-width: 86vw; padding: 22px 24px;
+  border-radius: 16px; background: #f4efe6; color: #3e2c1c; text-align: center;
+}
+#modal h2 { margin: 0 0 8px; }
+#modal .row { margin-top: 16px; }
+#modal button { background: #3e5c66; color: #fff; padding: 8px 24px; margin: 0 4px; }
+#modal button.secondary { background: #d9d2c5; color: #3e2c1c; }
+#modal button[hidden] { display: none; }

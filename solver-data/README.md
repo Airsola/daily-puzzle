@@ -9,6 +9,10 @@
 
 解压：`tar xJf solver-data/solutions.tar.xz -C solver-data`；校验：`shasum -a 256 -c solver-data/solutions.tar.xz.sha256`（需先 `cd solver-data`）。
 
+## 互动图解
+
+打开 [解法编码与全量统计](../solution-encoding-demo.html) 可查看拼块图册、逐块还原、查询 2,562 个日期组合的解数，以及对比二维棋盘文本、逐格单行、30 位编码与归档体积。页面独立运行，不加载全量解法。
+
 ## 解法编码
 
 每行 30 个字符。按零件顺序 0..9 排列，每块零件占 3 位数字，依次是「方向 o、行 row、列 col」。

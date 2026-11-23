@@ -1,4 +1,4 @@
-/* 每日拼图 · 浏览器界面（SVG 渲染 + Pointer Events 拖拽） */
+/* 每日拼图 · 游戏交互；Three.js 实体视图，SVG 为无 WebGL 设备提供兼容视图。 */
 (function () {
   'use strict';
   const C = window.PuzzleCore;
@@ -16,6 +16,53 @@
   const $ = (id) => document.getElementById(id);
   const svg = $('game'), boardLayer = $('board'), ghostLayer = $('ghost'), piecesLayer = $('pieces');
   const key = (r, c) => r + ',' + c;
+  const stage = $('stage');
+  let renderer3d = null;
+
+  // 渲染层只接收摆法，不参与求解、胜负判定或持久化。SVG 同步保留作兼容回退。
+  function syncPiece(p) {
+    if (!renderer3d || !p.visual) return;
+    renderer3d.setPiece(p.i, {
+      cells: cellsOf(p), ...p.visual, scale: p.visual.s,
+      selected: selected === p, dragging: !!(drag && drag.p === p && drag.moved),
+      placed: !!p.pos, animate: p.g.classList.contains('anim'), motion: p.motion,
+    });
+    p.motion = null;
+  }
+  function cancelDrag() {
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    if (stage.hasPointerCapture(d.id)) stage.releasePointerCapture(d.id);
+    d.p.g.classList.remove('dragging');
+    ghostLayer.textContent = '';
+    if (renderer3d) renderer3d.setGhost(null, null);
+    place(d.p, false);
+  }
+  function disable3D(notify = false) {
+    cancelDrag();
+    if (renderer3d) renderer3d.dispose();
+    renderer3d = null;
+    stage.classList.remove('is-3d');
+    $('render-mode').textContent = '二维 · 切换立体';
+    $('render-mode').setAttribute('aria-pressed', 'false');
+    if (notify) toast('立体视图暂不可用，已切换为二维，进度不受影响');
+  }
+  function enable3D() {
+    try {
+      if (!window.PuzzleRenderer3D) throw new Error('3D renderer unavailable');
+      renderer3d = window.PuzzleRenderer3D.create({ container: stage, colors: COLORS,
+        onUnavailable: () => disable3D(true) });
+      renderer3d.setLayout(layout);
+      renderer3d.setTargets(targets);
+      pieces.forEach(syncPiece);
+      stage.classList.add('is-3d');
+      $('render-mode').textContent = '立体 · 切换二维';
+      $('render-mode').setAttribute('aria-pressed', 'true');
+    } catch (error) {
+      disable3D(true);
+    }
+  }
 
   function el(tag, attrs, parent) {
     const e = document.createElementNS(NS, tag);
@@ -52,15 +99,19 @@
     const r = $('stage').getBoundingClientRect();
     if (r.width / Math.max(r.height, 1) > 1.15) {
       const slot = 230, cols = 3;
-      return { trayX: FW + 40, trayY: 0, cols, slot, scale: 0.5, W: FW + 40 + cols * slot, H: Math.max(FH, 4 * slot) };
+      return { mode: 'landscape', trayX: FW + 40, trayY: 0, cols, slot, scale: 0.5, W: FW + 40 + cols * slot, H: Math.max(FH, 4 * slot) };
     }
     const cols = 4, slot = FW / cols;
-    return { trayX: 0, trayY: FH + 24, cols, slot, scale: 0.42, W: FW, H: FH + 24 + 3 * slot };
+    return { mode: 'portrait', trayX: 0, trayY: FH + 24, cols, slot, scale: 0.42, W: FW, H: FH + 24 + 3 * slot };
   }
   function applyLayout() {
+    cancelDrag();
     layout = computeLayout();
+    document.body.dataset.layout = layout.mode;
     svg.setAttribute('viewBox', `0 0 ${layout.W} ${layout.H}`);
+    if (renderer3d) renderer3d.setLayout(layout);
     pieces.forEach((p) => place(p, false));
+    updateBannerPosition();
   }
 
   // ---------- 棋盘 ----------
@@ -121,6 +172,8 @@
   }
   function setTransform(p, x, y, s) {
     p.g.style.transform = `translate(${x}px,${y}px) scale(${s})`;
+    p.visual = { x, y, s };
+    syncPiece(p);
   }
   function place(p, animate) {
     p.g.classList.toggle('anim', !!animate);
@@ -136,13 +189,17 @@
     return occ;
   }
   function select(p) {
-    if (selected && selected.g) selected.g.classList.remove('selected');
+    const previous = selected;
+    if (previous && previous.g) previous.g.classList.remove('selected');
     selected = p;
     if (p) p.g.classList.add('selected');
+    if (previous) syncPiece(previous);
+    if (p) syncPiece(p);
   }
 
   /** 旋转/翻转后尽量留在棋盘原处；放不下就回到托盘 */
-  function transformPiece(p, nextO) {
+  function transformPiece(p, nextO, motion) {
+    p.motion = renderer3d ? motion : null;
     const before = sizeOf(cellsOf(p));
     p.o = nextO;
     drawPiece(p);
@@ -165,11 +222,12 @@
       afterChange();
     }
   }
-  const rotate = (p) => p && !won && transformPiece(p, C.nextRotation(p.o));
-  const flip = (p) => p && !won && transformPiece(p, C.nextFlip(p.o));
+  const rotate = (p) => p && !won && transformPiece(p, C.nextRotation(p.o), 'rotate');
+  const flip = (p) => p && !won && transformPiece(p, C.nextFlip(p.o), 'flip');
 
   // ---------- 拖拽 ----------
   function toSvg(e) {
+    if (renderer3d) return renderer3d.toWorld(e.clientX, e.clientY);
     const pt = svg.createSVGPoint();
     pt.x = e.clientX; pt.y = e.clientY;
     return pt.matrixTransform(svg.getScreenCTM().inverse());
@@ -180,6 +238,7 @@
   }
   function drawGhost(p, snap) {
     ghostLayer.textContent = '';
+    if (renderer3d) renderer3d.setGhost(snap ? cellsOf(p) : null, snap);
     if (!snap) return;
     for (const [r, c] of cellsOf(p))
       el('rect', { class: 'ghost', x: BX + (c + snap.col) * CELL, y: BY + (r + snap.row) * CELL, width: CELL, height: CELL }, ghostLayer);
@@ -192,24 +251,35 @@
     drawGhost(p, drag.snap);
   }
 
-  svg.addEventListener('pointerdown', (e) => {
+  function eventPiece(e) {
+    if (renderer3d) {
+      const i = renderer3d.hitTest(e.clientX, e.clientY);
+      return i == null ? null : pieces[i];
+    }
     const g = e.target.closest('.piece');
-    if (!g || won || drag || e.button > 0) return;
+    return g ? pieces[+g.dataset.i] : null;
+  }
+  stage.addEventListener('pointerdown', (e) => {
+    if (won || drag || e.button > 0) return;
+    const p = eventPiece(e);
+    if (!p) return;
+    const g = p.g;
     e.preventDefault();
-    const p = pieces[+g.dataset.i];
     select(p);
     startTimer();
-    const pt = toSvg(e), cur = currentXYS(p);
+    const cur = renderer3d ? renderer3d.capturePiece(p.i) : currentXYS(p);
+    const pt = toSvg(e);
     drag = {
       p, id: e.pointerId, moved: false, snap: null, last: pt,
       sx: e.clientX, sy: e.clientY,
-      offX: (pt.x - cur.x) / cur.s, offY: (pt.y - cur.y) / cur.s,
+      offX: cur.anchorX ?? (pt.x - cur.x) / cur.s,
+      offY: cur.anchorY ?? (pt.y - cur.y) / cur.s,
     };
-    svg.setPointerCapture(e.pointerId);
+    stage.setPointerCapture(e.pointerId);
     piecesLayer.appendChild(g);      // 置顶
     g.classList.remove('anim');
   });
-  svg.addEventListener('pointermove', (e) => {
+  stage.addEventListener('pointermove', (e) => {
     if (!drag || e.pointerId !== drag.id) return;
     if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;
     if (!drag.moved) { drag.moved = true; drag.p.g.classList.add('dragging'); }
@@ -220,23 +290,26 @@
     if (!drag || e.pointerId !== drag.id) return;
     const d = drag;
     drag = null;
+    if (stage.hasPointerCapture(d.id)) stage.releasePointerCapture(d.id);
     ghostLayer.textContent = '';
+    if (renderer3d) renderer3d.setGhost(null, null);
     d.p.g.classList.remove('dragging');
     if (!d.moved) {
       if (!cancelled) rotate(d.p);        // 轻点 = 旋转
+      else place(d.p, true);
       return;
     }
     d.p.pos = cancelled ? d.p.pos : d.snap;
     place(d.p, true);
     afterChange();
   }
-  svg.addEventListener('pointerup', (e) => endDrag(e, false));
-  svg.addEventListener('pointercancel', (e) => endDrag(e, true));
-  svg.addEventListener('contextmenu', (e) => {
-    const g = e.target.closest('.piece');
-    if (!g) return;
+  stage.addEventListener('pointerup', (e) => endDrag(e, false));
+  stage.addEventListener('pointercancel', (e) => endDrag(e, true));
+  stage.addEventListener('lostpointercapture', () => cancelDrag());
+  stage.addEventListener('contextmenu', (e) => {
+    const p = eventPiece(e);
+    if (!p) return;
     e.preventDefault();
-    const p = pieces[+g.dataset.i];
     select(p);
     flip(p);
   });
@@ -416,6 +489,8 @@
     afterChange();
   }
   function reset() {
+    cancelDrag();
+    $('modal').hidden = true;
     pieces.forEach((p) => { p.pos = null; p.o = 0; drawPiece(p); place(p, true); });
     elapsed = 0; startedAt = null; won = false; usedAnswer = false;
     select(null);
@@ -432,6 +507,10 @@
     toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
   }
   let modalOk = null;
+  function updateBannerPosition() {
+    const tools = document.querySelector('.tools');
+    $('modal').style.setProperty('--banner-bottom', Math.max(16, innerHeight - tools.getBoundingClientRect().top + 10) + 'px');
+  }
   /** 页面内弹窗；传 opts.onOk 时作为确认框使用（不依赖 window.confirm，内嵌页面里也能用） */
   function showModal(title, text, opts = {}) {
     $('modal-title').textContent = title;
@@ -440,7 +519,8 @@
     $('modal-cancel').textContent = opts.cancelText || '取消';
     $('modal-cancel').hidden = !opts.onOk;
     modalOk = opts.onOk || null;
-    // 纯提示（如完成）用底部横幅、不遮盖棋盘；确认框仍居中带遮罩
+    // 结果横幅和棋盘使用同一个布局判定，避免方屏上遮住棋盘。
+    updateBannerPosition();
     $('modal').classList.toggle('banner', opts.banner != null ? opts.banner : !opts.onOk);
     $('modal').hidden = false;
   }
@@ -459,6 +539,8 @@
     return targets.map(([r, c]) => C.LABEL[key(r, c)]).join(' ');
   }
   function setDate(str) {
+    cancelDrag();
+    $('modal').hidden = true;
     if (dateStr) { stopTimer(); save(); }
     const [y, m, d] = str.split('-').map(Number);
     dateStr = str;
@@ -470,6 +552,7 @@
     loadFound();
     shownAnswers = new Set();
     drawBoard();
+    if (renderer3d) renderer3d.setTargets(targets);
     pieces.forEach((p) => { drawPiece(p); place(p, false); });
     select(null);
     refreshStatus();
@@ -482,13 +565,22 @@
   $('hint').onclick = hint;
   $('answer').onclick = answer;
   $('reset').onclick = reset;
-  window.addEventListener('resize', applyLayout);
+  $('render-mode').onclick = () => {
+    cancelDrag();
+    if (renderer3d) disable3D(); else enable3D();
+    try { localStorage.setItem(STORE + 'view', renderer3d ? '3d' : '2d'); } catch (_) { /* 忽略 */ }
+  };
+  new ResizeObserver(applyLayout).observe(stage);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { stopTimer(); save(); }
   });
 
   // ---------- 启动 ----------
   layout = computeLayout();
+  document.body.dataset.layout = layout.mode;
   svg.setAttribute('viewBox', `0 0 ${layout.W} ${layout.H}`);
   setDate(toStr(new Date()));
+  let prefer3D = true;
+  try { prefer3D = localStorage.getItem(STORE + 'view') !== '2d'; } catch (_) { /* 默认立体 */ }
+  if (prefer3D) enable3D(); else disable3D();
 })();

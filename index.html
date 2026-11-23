@@ -8,11 +8,13 @@
 </head>
 <body>
   <header class="bar">
-    <div class="goal">目标：<b id="goal"></b><span id="done" class="badge" hidden>已完成</span></div>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">▦</span><div><h1>每日拼图</h1><span class="brand-note">把日子，慢慢拼好。</span></div></div>
+    <div class="goal"><span class="eyebrow">留给今天的三格</span><b id="goal"></b><span id="done" class="badge" hidden>已完成</span></div>
     <div class="meta">
       <input type="date" id="date" aria-label="选择日期">
       <button id="today" type="button">今天</button>
       <span id="timer" aria-label="用时">00:00</span>
+      <button id="render-mode" type="button" aria-pressed="false" title="切换立体与二维兼容视图">立体视图</button>
     </div>
   </header>
 
@@ -27,7 +29,7 @@
   <footer class="bar tools">
     <button id="rotate" type="button">↻ 旋转</button>
     <button id="flip" type="button">⇋ 翻转</button>
-    <button id="hint" type="button">💡 提示</button>
+    <button id="hint" type="button">提示一块</button>
     <button id="reset" type="button">重置</button>
     <button id="answer" type="button">答案</button>
   </footer>
@@ -47,6 +49,8 @@
   </div>
 
   <script src="js/core.js"></script>
+  <script src="js/vendor/three.min.js"></script>
+  <script src="js/renderer3d.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

@@ -1,44 +1,49 @@
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+html, body { margin: 0; min-height: 100%; }
 body {
-  display: flex; flex-direction: column;
-  height: 100dvh;
-  background: radial-gradient(circle at 30% 20%, #6f8f99, #3e5c66);
-  color: #f4efe6;
+  display: flex; flex-direction: column; height: 100dvh; min-height: 620px;
+  background: #e5e3da;
+  color: #33483e;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-  -webkit-user-select: none; user-select: none;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
 }
-.bar {
-  display: flex; flex-wrap: wrap; gap: 8px 16px;
-  align-items: center; justify-content: space-between;
-  padding: 10px 14px;
-}
-.goal { font-size: 17px; }
-.goal b { color: #ffd98a; letter-spacing: 1px; }
-.badge {
-  margin-left: 8px; padding: 2px 8px; border-radius: 10px;
-  background: #81b29a; color: #fff; font-size: 12px;
-}
+.bar { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; padding: 20px 32px 12px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark { font-size: 36px; color: #8a704c; }
+h1 { font-size: 21px; letter-spacing: 3px; margin: 0 0 4px; font-weight: 600; }
+.brand-note { font-size: 11px; color: #7b8272; letter-spacing: 2px; }
+.goal { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 7px 12px; font-size: 16px; }
+.eyebrow { font-size: 11px; letter-spacing: 2px; color: #7d8275; }
+.goal b { color: #765b3c; letter-spacing: 1px; font-weight: 500; }
+.badge { padding: 4px 10px; border-radius: 20px; background: #43645213; color: #436452; font-size: 11px; }
 .meta { display: flex; gap: 8px; align-items: center; }
-#timer { font-variant-numeric: tabular-nums; min-width: 48px; text-align: right; }
+#timer { font-variant-numeric: tabular-nums; font-size: 13px; min-width: 48px; text-align: center; color: #657164; }
 button, input[type=date] {
-  font: inherit; font-size: 14px;
-  border: 0; border-radius: 8px;
-  padding: 7px 12px;
-  background: #f4efe6; color: #3e2c1c;
-  cursor: pointer;
+  font: inherit; font-size: 13px; border: 1px solid #ffffff22; border-radius: 10px;
+  padding: 9px 13px; background: #f4efe6; color: #3e4438; cursor: pointer;
+  box-shadow: 0 2px 3px #172e2620; transition: background .16s, transform .16s;
 }
+button:hover:not(:disabled) { background: #fffaf0; }
 button:active { transform: translateY(1px); }
-button:disabled { opacity: .45; cursor: default; }
-.tools { justify-content: center; }
-.help { margin: 0 14px 10px; font-size: 12px; opacity: .75; text-align: center; }
-.help-link { color: inherit; text-underline-offset: 2px; }
-
-#stage { flex: 1; min-height: 0; padding: 0 8px; }
+button:focus-visible, input:focus-visible { outline: 2px solid #efce94; outline-offset: 4px; }
+button:disabled { opacity: .4; cursor: default; }
+#render-mode { background: #ffffff25; color: #5c6b5e; font-size: 11px; padding: 9px 10px; }
+#render-mode:hover { background: #ffffff60; }
+.tools { justify-content: center; gap: 10px; padding: 10px 14px; }
+.tools button { padding: 11px 22px; }
+#hint { background: #3d5b4b; border-color: #3d5b4b; color: #fff8e9; }
+#hint:hover:not(:disabled) { background: #4d6d59; }
+#answer { background: transparent; color: #546450; border-color: #71806c40; }
+#answer:hover:not(:disabled) { background: #ffffff50; }
+.help { margin: 2px 20px 14px; font-size: 11px; line-height: 1.8; color: #727b6c; text-align: center; }
+.help-link { color: #7c735c; text-underline-offset: 4px; }
+#stage { position: relative; flex: 1; min-height: 0; margin: 0 16px; touch-action: none; }
 #game { width: 100%; height: 100%; display: block; touch-action: none; }
+#stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#stage canvas:active { cursor: grabbing; }
+#stage.is-3d #game { visibility: hidden; pointer-events: none; }
 
-/* 棋盘 */
+/* SVG 兼容模式：与立体模式共用同一套游戏状态。 */
 .frame { fill: #ead9bf; stroke: #b8936a; stroke-width: 4; stroke-linejoin: round; }
 .cell { fill: #d9bd92; stroke: #b8936a; stroke-width: 2; filter: url(#inset); }
 .well { fill: none; stroke: #7a5634; stroke-width: 5; stroke-linecap: round; }
@@ -48,51 +53,71 @@ button:disabled { opacity: .45; cursor: default; }
 .title { fill: #4a3220; font-size: 40px; font-weight: 700; text-anchor: middle; }
 .motto { fill: #6b4a2b; font-size: 46px; text-anchor: middle; letter-spacing: 10px; }
 .cell { transition: fill .3s; }
-/* 完成后：露出的格子保持棋盘本色，只让刻字发光，像实物一样从镂空处透出来 */
 .won .label.target { animation: glow 1.4s ease-in-out infinite alternate; }
 @keyframes glow { from { fill: #c0392b; } to { fill: #e8553f; } }
-
-/* 零件 */
 .piece { cursor: grab; filter: drop-shadow(2px 4px 3px rgba(60,35,15,.45)); }
 .piece .edge { fill: none; stroke: rgba(0,0,0,.45); stroke-width: 4; stroke-linecap: round; }
 .piece.selected .edge { stroke: #fff; stroke-width: 7; }
 .piece.anim { transition: transform .22s ease; }
 .piece.dragging { cursor: grabbing; filter: drop-shadow(8px 14px 10px rgba(0,0,0,.4)); }
 .ghost { fill: rgba(255,255,255,.45); stroke: #fff; stroke-width: 3; stroke-dasharray: 8 6; pointer-events: none; }
-
-#toast {
-  position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
-  max-width: 90vw; padding: 9px 16px; border-radius: 20px;
-  background: rgba(30,30,30,.85); color: #fff; font-size: 14px;
-  opacity: 0; pointer-events: none; transition: opacity .2s;
-}
+#toast { position: fixed; z-index: 5; left: 50%; bottom: 115px; transform: translateX(-50%); max-width: 90vw; padding: 10px 18px; border-radius: 24px; background: #20372fee; color: #fff; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s; }
 #toast.show { opacity: 1; }
-
-#modal {
-  position: fixed; inset: 0; display: grid; place-items: center;
-  background: rgba(0,0,0,.4);
-}
+#modal { position: fixed; z-index: 4; inset: 0; display: grid; place-items: center; background: #15231e88; backdrop-filter: blur(4px); }
 #modal[hidden] { display: none; }
-#modal.banner { inset: 58px 0 auto 0; background: none; pointer-events: none; }
-#modal.banner .card {
-  pointer-events: auto; box-shadow: 0 6px 24px rgba(0,0,0,.25);
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;
-  padding: 8px 14px; border-radius: 12px; font-size: 14px;
-}
-#modal.banner h2 { margin: 0; font-size: 16px; }
-#modal.banner p { margin: 0; }
-#modal.banner .row { margin-top: 0; }
-#modal.banner button { padding: 5px 14px; }
-#modal .card {
-  min-width: 260px; max-width: 86vw; padding: 22px 24px;
-  border-radius: 16px; background: #f4efe6; color: #3e2c1c; text-align: center;
-}
+/* 结果横幅使用托盘空出的区域，而非覆盖棋盘。 */
+#modal.banner { inset: 100px 24px auto auto; width: min(340px, 32vw); background: none; backdrop-filter: none; pointer-events: none; }
+#modal.banner .card { pointer-events: auto; box-shadow: 0 8px 28px #162e2333; min-width: 0; padding: 14px 18px; font-size: 13px; }
+#modal.banner h2 { font-size: 16px; }
+#modal.banner p { margin: 6px 0; line-height: 1.6; }
+#modal.banner .row { margin-top: 10px; }
+#modal.banner button { padding: 7px 14px; }
+#modal .card { min-width: 260px; max-width: 86vw; padding: 24px; border: 1px solid #fff8; border-radius: 18px; background: #f4efe6; color: #3e4438; text-align: center; }
 #modal h2 { margin: 0 0 8px; }
 #modal .row { margin-top: 16px; }
-#modal button { background: #3e5c66; color: #fff; padding: 8px 24px; margin: 0 4px; }
-#modal button.secondary { background: #d9d2c5; color: #3e2c1c; }
-#modal button[hidden] { display: none; }
-/* 竖屏：托盘在棋盘下方，完成后那块是空的，横幅放到工具栏上方，避免盖住格子 */
-@media (max-aspect-ratio: 1/1) {
-  #modal.banner { inset: auto 0 calc(var(--banner-bottom, 160px) + env(safe-area-inset-bottom)) 0; }
+#modal button { background: #3e5c50; color: #fff; padding: 8px 24px; margin: 0 4px; }
+#modal button.secondary { background: #e1ddcf; color: #3e4438; }
+#modal button[hidden], [hidden] { display: none !important; }
+@media (max-width: 1000px) {
+  .bar { padding: 14px 18px 8px; gap: 10px; }
+  .brand-note { display: none; }
+  .goal { flex-direction: column; gap: 4px; }
+  .eyebrow { font-size: 10px; }
+  .meta { gap: 5px; }
+  #render-mode { font-size: 10px; }
+}
+@media (max-width: 600px) {
+  body { min-height: 700px; }
+  header.bar { display: grid; grid-template-columns: 1fr auto; padding: 12px 16px 6px; }
+  .brand { gap: 8px; }
+  h1 { font-size: 17px; letter-spacing: 2px; margin: 0; }
+  .brand-mark { font-size: 27px; }
+  .goal { align-items: flex-end; font-size: 13px; }
+  .meta { grid-column: 1 / -1; justify-content: center; padding-top: 4px; }
+  .meta button, .meta input { padding: 7px 10px; font-size: 12px; }
+  #timer { margin: 0 4px; }
+  #stage { margin: 0 4px; }
+  .tools { gap: 7px; padding: 8px 10px; }
+  .tools button { padding: 10px 13px; font-size: 12px; }
+  .help { font-size: 10px; margin: 0 18px calc(8px + env(safe-area-inset-bottom)); }
+}
+body[data-layout="portrait"] #modal.banner { inset: auto 0 var(--banner-bottom, 125px); width: 100%; }
+body[data-layout="portrait"] #modal.banner .card { max-width: min(86vw, 460px); padding: 10px 16px; }
+@media (max-height: 540px) and (orientation: landscape) {
+  body { min-height: 0; }
+  header.bar { display: flex; flex-wrap: nowrap; padding: 5px 12px; gap: 8px; }
+  .brand-mark { font-size: 24px; }
+  h1 { font-size: 15px; white-space: nowrap; letter-spacing: 1px; }
+  .brand-note, .eyebrow, .help { display: none; }
+  .goal { font-size: 12px; gap: 2px; }
+  .meta { padding: 0; gap: 4px; }
+  .meta button, .meta input { font-size: 11px; padding: 6px; }
+  #timer { min-width: 38px; font-size: 11px; }
+  .tools { padding: 5px; }
+  .tools button { padding: 7px 14px; }
+  #modal.banner { top: 55px; }
+  #modal.banner .card { padding: 8px 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }

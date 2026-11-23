@@ -1995,9 +1995,9 @@
   ],
   "orientation": "o = 0..7。rot = o % 4 为顺时针旋转 90° 的次数；o >= 4 表示先水平翻转（列取反）再旋转。每一步后都平移归一化。",
   "solutionEncoding": {
-    "format": "每条解 30 个字符：按 pieces 的 index 顺序，每块 3 位数字「o row col」。",
+    "format": "每条解 30 个字符：按 pieces 的 index 顺序，每块 3 位数字「o row col」，o=0..7，row=0..7，col=0..6。",
     "meaning": "零件 i 采用 orientations[o] 的形状，形状中的格子 [r,c] 落在棋盘 [r+row, c+col]。",
-    "example": "每块 3 位 = \"o\"+\"row\"+\"col\"，例如 \"512\" 表示方向 5、左上角在第 1 行第 2 列。"
+    "example": "\"512\" 表示方向 5、外接矩形左上角在第 1 行第 2 列。"
   },
   "files": {
     "pattern": "solutions/MM-DD-W.txt",

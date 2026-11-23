@@ -45,7 +45,10 @@
     { id: 'U5', cells: [[0, 0], [0, 2], [1, 0], [1, 1], [1, 2]] },
   ];
 
-  /** 归一化：平移到左上角为 (0,0)，按行优先排序 */
+  /**
+   * 归一化：整体平移，使形状外接矩形的左上角为 (0,0)，再按行优先排序。
+   * 注意：形状本身不一定占 (0,0)，例如 T5 的第一个格子是 (0,1)。
+   */
   function normalize(cells) {
     const minR = Math.min(...cells.map((p) => p[0]));
     const minC = Math.min(...cells.map((p) => p[1]));
@@ -71,12 +74,15 @@
   /** 在当前方向上水平翻转：flip∘rot^k = rot^(-k)∘flip */
   const nextFlip = (o) => (o >= 4 ? 0 : 4) + ((4 - (o % 4)) % 4);
 
-  /** 每个零件的去重方向列表 */
-  const UNIQUE_ORIENTS = PIECES.map((p) => {
+  /**
+   * 形状的去重方向：8 个方向编号里形状相同的只保留第一个（保留原编号 o）。
+   * 例如 I4 只有 2 个不同方向，S4 有 4 个。
+   */
+  function uniqueOrientations(cells) {
     const seen = new Set();
     const out = [];
     for (let o = 0; o < 8; o++) {
-      const s = orient(p.cells, o);
+      const s = orient(cells, o);
       const k = keyOf(s);
       if (!seen.has(k)) {
         seen.add(k);
@@ -84,17 +90,22 @@
       }
     }
     return out;
-  });
+  }
+  const UNIQUE_ORIENTS = PIECES.map((p) => uniqueOrientations(p.cells));
 
-  /** 日期 -> 应露出的 3 个格子 */
-  function targetCells(date) {
-    const m = date.getMonth(); // 0..11
-    const d = date.getDate(); // 1..31
-    const w = date.getDay(); // 0=周日
+  /** 棋盘格子按行优先排列（求解时「先填最上、最左的空格」的顺序） */
+  const BOARD_ORDER = CELLS.map(([r, c]) => [r, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+
+  /** 月(1..12)、日(1..31)、星期(0=周日..6) -> 应露出的 3 个格子 [row, col] */
+  function holesFor(month, day, weekday) {
     const find = (label) => CELLS.find((x) => x[2] === label);
-    return [find(`${m + 1}月`), find(`${d}日`), find(`星期${WEEKDAYS[w]}`)].map(
+    return [find(`${month}月`), find(`${day}日`), find(`星期${WEEKDAYS[weekday]}`)].map(
       ([r, c]) => [r, c]
     );
+  }
+  /** 日期 -> 应露出的 3 个格子 */
+  function targetCells(date) {
+    return holesFor(date.getMonth() + 1, date.getDate(), date.getDay());
   }
 
   /** 判断零件放在 (row,col) 是否合法；occupied 为 Set<"r,c"> */
@@ -110,8 +121,13 @@
    * 求解。
    * @param {Array<[r,c]>} holes 必须露出的格子
    * @param {Object} fixed  已固定零件 {pieceIndex: {o,row,col}}
-   * @param {Object} opts   {shuffle, random, maxNodes}
+   * @param {Object} opts   {shuffle, random, maxNodes}；maxNodes 为搜索节点上限（含根节点），不传表示不限
    * @returns {Object|null|undefined} 解（含 fixed）；null=无解；undefined=超出 maxNodes
+   *
+   * 为什么不漏解、也不会重复：每一步只填「行优先最小的空格」。它前面的格子都已被占，
+   * 所以任何能盖住它的合法落点，其最小格子必然就是它；只需把形状的第一个格子（cells[0]，
+   * 归一化后行优先最小）对齐到这个空格即可，不必尝试形状里的每个格子当锚点。
+   * 于是每种最终摆法在每一层都唯一决定「下一块是谁、放哪」，配合方向去重，每种摆法只出现一次。
    */
   function solve(holes, fixed = {}, opts = {}) {
     const rand = opts.random || Math.random;
@@ -123,7 +139,7 @@
         blocked.add(k);
       }
     }
-    const order = CELLS.map(([r, c]) => [r, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const order = BOARD_ORDER;
     const free = PIECES.map((_, i) => i).filter((i) => !(i in fixed));
     const orients = UNIQUE_ORIENTS.map((list) => {
       const l = list.slice();
@@ -139,7 +155,7 @@
     }
     const used = new Set();
     const result = Object.assign({}, fixed);
-    const maxNodes = opts.maxNodes || Infinity;
+    const maxNodes = opts.maxNodes ?? Infinity;
     let nodes = 0;
     const ABORT = {};
 
@@ -179,7 +195,7 @@
 
   return {
     COLS, ROWS, CELLS, LABEL, PIECES, WEEKDAYS,
-    isBoardCell, normalize, orient, nextRotation, nextFlip,
-    targetCells, canPlace, solve,
+    BOARD_ORDER, isBoardCell, normalize, orient, uniqueOrientations, nextRotation, nextFlip,
+    holesFor, targetCells, canPlace, solve,
   };
 });
